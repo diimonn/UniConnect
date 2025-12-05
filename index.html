@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DataHub ВУЗов РК</title>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: "Segoe UI", sans-serif;
+            background: linear-gradient(180deg, #eef5ff, #ffffff);
+            overflow-x: hidden;
+        }
+
+        /* АНИМАЦИИ ---------------------------------- */
+        @keyframes fadeInUp {
+            0% {
+                opacity: 0;
+                transform: translateY(25px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .fade {
+            animation: fadeInUp 0.8s ease forwards;
+        }
+
+        .delay-1 { animation-delay: 0.2s; }
+        .delay-2 { animation-delay: 0.4s; }
+        .delay-3 { animation-delay: 0.6s; }
+
+        /* НАВБАР */
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 60px;
+            background: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            position: sticky;
+            top: 0;
+            z-index: 999;
+        }
+
+        .navbar-logo {
+            font-size: 22px;
+            font-weight: bold;
+            color: #0046ff;
+        }
+
+        .navbar-menu a {
+            margin: 0 15px;
+            color: #333;
+            font-size: 16px;
+            text-decoration: none;
+            transition: 0.2s;
+        }
+
+        .navbar-menu a:hover {
+            color: #0046ff;
+        }
+
+        /* HERO */
+        .hero {
+            text-align: center;
+            padding: 80px 20px;
+        }
+
+        .hero-title {
+            font-size: 46px;
+            font-weight: 600;
+            color: #2a4bdc;
+        }
+
+        .hero-subtitle {
+            font-size: 18px;
+            color: #555;
+            max-width: 650px;
+            margin: 20px auto;
+        }
+
+        /* SEARCH */
+        .search-box {
+            margin: 25px auto;
+            width: 60%;
+            display: flex;
+            background: white;
+            border-radius: 40px;
+            padding: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            animation: fadeInUp 1s ease;
+        }
+
+        .search-box input {
+            flex: 1;
+            border: none;
+            outline: none;
+            padding: 12px;
+            font-size: 16px;
+        }
+
+        .search-box button {
+            background: #3478ff;
+            color: white;
+            padding: 12px 25px;
+            border-radius: 30px;
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+            transition: 0.25s;
+        }
+
+        .search-box button:hover {
+            background: #0050ff;
+        }
+
+        /* СТАТИСТИКА */
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 25px;
+            margin-top: 40px;
+        }
+
+        .stat-card {
+            background: white;
+            width: 220px;
+            padding: 25px;
+            border-radius: 18px;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            transition: 0.25s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 12px 24px rgba(0,0,0,0.18);
+        }
+
+        .stat-card-number {
+            font-size: 32px;
+            font-weight: bold;
+            color: #3a57df;
+        }
+
+        .stat-card-text {
+            color: #444;
+            margin-top: 8px;
+        }
+
+        /* СЕКЦИИ */
+        .section-title {
+            text-align: center;
+            font-size: 28px;
+            margin-top: 60px;
+            margin-bottom: 25px;
+            color: #333;
+            font-weight: 600;
+            animation: fadeInUp 0.8s ease;
+        }
+
+        .cards {
+            display: flex;
+            justify-content: center;
+            gap: 25px;
+            padding: 20px;
+            flex-wrap: wrap;
+        }
+
+        /* КАРТОЧКИ */
+        .card {
+            background: white;
+            padding: 25px;
+            width: 260px;
+            border-radius: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            transition: 0.25s ease;
+            opacity: 0;
+            animation: fadeInUp 1s ease forwards;
+        }
+
+        .card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 12px 26px rgba(0,70,255,0.25);
+        }
+
+        .card-title {
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .card-sub {
+            color: #666;
+            margin-top: 8px;
+            margin-bottom: 15px;
+        }
+
+        .card a {
+            color: #2666ff;
+            font-weight: 500;
+            text-decoration: none;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Навбар -->
+    <div class="navbar fade">
+        <div class="navbar-logo">DataHub ВУЗов РК</div>
+
+        <div class="navbar-menu">
+            <a href="#">Главная</a>
+            <a href="universities.html">О ВУЗах</a>
+            <a href="#">Программы</a>
+            <a href="#">Поступление</a>
+            <a href="#">3D-тур</a>
+            <a href="#">Международное</a>
+            <a href="#">Сравнение</a>
+        </div>
+    </div>
+
+    <!-- HERO -->
+    <div class="hero fade delay-1">
+        <div class="hero-title">DataHub ВУЗов РК</div>
+        <div class="hero-subtitle">
+            Единая информационная система высших учебных заведений Казахстана. 
+            Найдите свой идеальный университет среди лучших ВУЗов страны.
+        </div>
+
+        <div class="search-box fade delay-2">
+            <input type="text" placeholder="Поиск университетов, программ, специальностей...">
+            <button>Найти</button>
+        </div>
+
+        <!-- СТАТИСТИКА -->
+        <div class="stats fade delay-3">
+            <div class="stat-card">
+                <div class="stat-card-number">120+</div>
+                <div class="stat-card-text">Университетов</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card-number">500+</div>
+                <div class="stat-card-text">Программ обучения</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card-number">50+</div>
+                <div class="stat-card-text">Международных партнёров</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ОСНОВНЫЕ РАЗДЕЛЫ -->
+    <div class="section-title">Основные разделы</div>
+
+    <div class="cards">
+        <div class="card delay-1">
+            <div class="card-title">Об университете</div>
+            <div class="card-sub">Миссия, история, руководство и достижения</div>
+            <a href="#">Узнать больше →</a>
+        </div>
+
+        <div class="card delay-2">
+            <div class="card-title">Академические программы</div>
+            <div class="card-sub">Бакалавриат, магистратура и докторантура</div>
+            <a href="#">Узнать больше →</a>
+        </div>
+
+        <div class="card delay-3">
+            <div class="card-title">Приём и поступление</div>
+            <div class="card-sub">Требования, сроки, стипендии</div>
+            <a href="#">Узнать больше →</a>
+        </div>
+    </div>
+
+    <!-- ДОПОЛНИТЕЛЬНЫЕ РАЗДЕЛЫ -->
+    <div class="section-title">Дополнительные возможности</div>
+
+    <div class="cards">
+        <div class="card delay-1">
+            <div class="card-title">3D-тур</div>
+            <div class="card-sub">Виртуальная экскурсия по кампусу</div>
+            <a href="#">Узнать больше →</a>
+        </div>
+
+        <div class="card delay-2">
+            <div class="card-title">Международное сотрудничество</div>
+            <div class="card-sub">Обмен студентами и партнёрские университеты</div>
+            <a href="#">Узнать больше →</a>
+        </div>
+
+        <div class="card delay-3">
+            <div class="card-title">Функция сравнения</div>
+            <div class="card-sub">Сравните университеты и программы</div>
+            <a href="#">Узнать больше →</a>
+        </div>
+    </div>
+
+</body>
+</html>
