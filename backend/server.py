@@ -1,13 +1,35 @@
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
-from db_connection import Database  # Импорт из нового файла
+import mysql.connector
 import os
+from deepseek_assistant import DeepSeekAI
+import re
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = Flask(__name__, static_folder='../frontend')
 CORS(app)
 
-db = Database()
+# Конфигурация БД
+db_config = {
+    'host': os.getenv('DB_HOST', 'localhost'),
+    'user': os.getenv('DB_USER', 'root'),
+    'password': os.getenv('DB_PASSWORD', ''),
+    'database': os.getenv('DB_NAME', 'datahub_kz'),
+    'port': int(os.getenv('DB_PORT', 3306))
+}
 
+print(f"✅ Подключено к MySQL (порт {db_config['port']})")
+
+def get_db_connection():
+    return mysql.connector.connect(**db_config)
+
+
+# После создания app:
+deepseek_ai = DeepSeekAI()
+
+# ==================== СТАТИЧЕСКИЕ ФАЙЛЫ ====================
 @app.route('/')
 def serve_index():
     return send_from_directory('../frontend', 'index.html')
@@ -16,21 +38,45 @@ def serve_index():
 def serve_static(path):
     return send_from_directory('../frontend', path)
 
+# ==================== API ДЛЯ ФРОНТЕНДА ====================
 @app.route('/api/universities')
 def get_universities():
-    universities = db.get_all_universities()
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("""
+        SELECT id, name, short_name, city, type, 
+               students_count, rating, programs_count,
+               ent_min_score, description
+        FROM universities 
+        ORDER BY rating DESC 
+        LIMIT 20
+    """)
+    universities = cursor.fetchall()
+    cursor.close()
+    conn.close()
     return jsonify(universities)
 
 @app.route('/api/university/<int:univ_id>')
 def get_university(univ_id):
-    university = db.get_university_by_id(univ_id)
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    
+    # Получаем университет
+    cursor.execute("SELECT * FROM universities WHERE id = %s", (univ_id,))
+    university = cursor.fetchone()
     
     if not university:
+        cursor.close()
+        conn.close()
         return jsonify({'error': 'University not found'}), 404
     
-    programs = db.get_programs_by_university(univ_id)
+    # Получаем программы
+    cursor.execute("SELECT * FROM programs WHERE university_id = %s", (univ_id,))
+    programs = cursor.fetchall()
     university['programs'] = programs
     
+    cursor.close()
+    conn.close()
     return jsonify(university)
 
 @app.route('/api/universities/search')
@@ -38,37 +84,229 @@ def search_universities():
     city = request.args.get('city', '')
     uni_type = request.args.get('type', '')
     
-    with db.connection.cursor() as cursor:
-        sql = """
-            SELECT id, name, short_name, city, type, 
-                   students_count, rating, programs_count
-            FROM universities 
-            WHERE 1=1
-        """
-        params = []
-        
-        if city and city != 'Все':
-            sql += " AND city = %s"
-            params.append(city)
-        
-        if uni_type and uni_type != 'Все':
-            sql += " AND type = %s"
-            params.append(uni_type)
-        
-        sql += " ORDER BY rating DESC"
-        cursor.execute(sql, params)
-        results = cursor.fetchall()
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
     
+    sql = """
+        SELECT id, name, short_name, city, type, 
+               students_count, rating, programs_count
+        FROM universities 
+        WHERE 1=1
+    """
+    params = []
+    
+    if city and city != 'Все':
+        sql += " AND city = %s"
+        params.append(city)
+    
+    if uni_type and uni_type != 'Все':
+        sql += " AND type = %s"
+        params.append(uni_type)
+    
+    sql += " ORDER BY rating DESC"
+    cursor.execute(sql, params)
+    results = cursor.fetchall()
+    
+    cursor.close()
+    conn.close()
     return jsonify(results)
 
-@app.route('/api/university/<int:univ_id>/programs')
-def get_university_programs(univ_id):
-    programs = db.get_programs_by_university(univ_id)
-    return jsonify(programs)
+# ==================== ИИ-АССИСТЕНТ ====================
+@app.route('/api/ai/ask', methods=['POST', 'OPTIONS'])
+def ai_assistant():
+    """ИИ-ассистент для вопросов об университетах"""
+    if request.method == 'OPTIONS':
+        return '', 200
+    
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"success": False, "error": "No data provided"}), 400
+        
+        question = data.get('question', '').lower()
+        
+        # Получаем данные из БД для контекста
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT id, name, short_name, city, type, rating, 
+                   ent_min_score, students_count, description
+            FROM universities 
+            ORDER BY rating DESC 
+            LIMIT 10
+        """)
+        universities = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        
+        # Формируем контекст
+        context = "Университеты в базе:\n"
+        for uni in universities:
+            context += f"- {uni['name']} ({uni['city']}): "
+            context += f"рейтинг {uni.get('rating', 'N/A')}, "
+            context += f"ЕНТ от {uni.get('ent_min_score', 'N/A')}\n"
+        
+        # Простая логика ответов
+        if "привет" in question or "здравствуй" in question or "hello" in question:
+            answer = "Привет! 👋 Я ИИ-помощник DataHub ВУЗов РК.\n" \
+                    "Могу помочь с выбором университета в Казахстане!\n\n" \
+                    "Спросите меня о:\n" \
+                    "• Рейтингах университетов\n" \
+                    "• Проходных баллах ЕНТ\n" \
+                    "• IT-программах\n" \
+                    "• Сравнении вузов\n" \
+                    "• Международных возможностях"
+        
+        elif "муит" in question or "международный" in question:
+            answer = "🎓 **МУИТ** - Международный Университет Информационных Технологий\n\n" \
+                    "📍 **Город:** Алматы\n" \
+                    "⭐ **Рейтинг:** 4.6/5\n" \
+                    "🎯 **Мин. ЕНТ:** 105 баллов\n" \
+                    "👨‍🎓 **Студентов:** 8000\n\n" \
+                    "💻 **IT-программы:**\n" \
+                    "• Информационные технологии\n" \
+                    "• Кибербезопасность\n" \
+                    "• Искусственный интеллект\n" \
+                    "• Разработка ПО\n\n" \
+                    "🌍 **Международное:** партнеры в США, Европе, Корее"
+        
+        elif "кбту" in question:
+            answer = "🎓 **КБТУ** - Казахстанско-Британский Технический Университет\n\n" \
+                    "📍 **Город:** Алматы\n" \
+                    "⭐ **Рейтинг:** 4.8/5\n" \
+                    "🎯 **Мин. ЕНТ:** 110 баллов\n" \
+                    "👨‍🎓 **Студентов:** 11000\n\n" \
+                    "🔧 **Программы:**\n" \
+                    "• Информационные системы\n" \
+                    "• Искусственный интеллект\n" \
+                    "• Кибербезопасность\n" \
+                    "• Нефтегазовое дело\n" \
+                    "• Data Science\n\n" \
+                    "🇬🇧 **Двойные дипломы** с британскими вузами"
+        
+        elif "сравни" in question:
+            answer = "⚖️ **Сравнение университетов:**\n\n" \
+                    "| Университет | Рейтинг | Город | Мин. ЕНТ | Студентов |\n" \
+                    "|-------------|---------|--------|----------|------------|\n" \
+                    "| МУИТ | 4.6 | Алматы | 105 | 8000 |\n" \
+                    "| КБТУ | 4.8 | Алматы | 110 | 11000 |\n" \
+                    "| AITU | 4.5 | Астана | 100 | 3500 |\n" \
+                    "| АУЭС | 4.4 | Алматы | 95 | 6000 |\n\n" \
+                    "💡 **Вывод:**\n" \
+                    "• **Для IT:** МУИТ или AITU\n" \
+                    "• **Для инженерии:** КБТУ\n" \
+                    "• **По доступности:** АУЭС (ЕНТ от 95)\n" \
+                    "• **По рейтингу:** КБТУ (4.8/5)"
+        
+        elif "балл" in question or "ент" in question:
+            # Ищем цифры в вопросе
+            numbers = re.findall(r'\d+', question)
+            if numbers:
+                score = int(numbers[0])
+                answer = f"🎯 **С баллом {score} можно поступить в:**\n\n"
+                
+                if score >= 110:
+                    answer += "✅ **КБТУ** - все программы\n"
+                if score >= 105:
+                    answer += "✅ **МУИТ** - IT программы\n"
+                if score >= 100:
+                    answer += "✅ **AITU** - Data Science, IT\n"
+                if score >= 95:
+                    answer += "✅ **АУЭС** - энергетика, связь\n"
+                if score < 95:
+                    answer += "📚 **Рекомендация:** подготовительные курсы или колледжи\n"
+                answer += "\n💡 *Точные требования зависят от программы*"
+            else:
+                answer = "🎓 **Проходные баллы ЕНТ (ориентировочно):**\n\n" \
+                        "• **КБТУ:** от 110 баллов\n" \
+                        "• **МУИТ:** от 105 баллов\n" \
+                        "• **AITU:** от 100 баллов\n" \
+                        "• **АУЭС:** от 95 баллов\n\n" \
+                        "🔍 **Уточните ваш балл** для точных рекомендаций!"
+        
+        elif "it" in question or "айти" in question or "компьютер" in question:
+            answer = "💻 **IT-университеты Казахстана:**\n\n" \
+                    "1. **МУИТ** (Алматы) - специализированный IT-вуз\n" \
+                    "   ⭐ 4.6 | 🎯 ЕНТ 105+ | 💻 Сильные IT программы\n\n" \
+                    "2. **AITU** (Астана) - государственный IT-университет\n" \
+                    "   ⭐ 4.5 | 🎯 ЕНТ 100+ | 🏛️ Фокус на цифровизацию\n\n" \
+                    "3. **КБТУ** (Алматы) - технический с сильными IT-программами\n" \
+                    "   ⭐ 4.8 | 🎯 ЕНТ 110+ | 🔧 Техническая база\n\n" \
+                    "4. **КазНУ** (Алматы) - компьютерные науки\n" \
+                    "   ⭐ 4.7 | 🎯 ЕНТ 108+ | 🎓 Классическое образование\n\n" \
+                    "🔥 **Популярные IT-программы:**\n" \
+                    "• Data Science\n• Кибербезопасность\n• Разработка ПО\n• Искусственный интеллект\n• Веб-разработка"
+        
+        elif "международн" in question or "зарубеж" in question or "партнер" in question:
+            answer = "🌍 **Международное сотрудничество:**\n\n" \
+                    "**КБТУ:**\n" \
+                    "• Партнеры: MIT (США), Oxford (UK), TU Berlin (Германия)\n" \
+                    "• Программы двойных дипломов\n\n" \
+                    "**МУИТ:**\n" \
+                    "• Обменные программы с Европой и Азией\n" \
+                    "• Партнеры в Корее, Японии, США\n\n" \
+                    "**AITU:**\n" \
+                    "• Сотрудничество с IT-компаниями мира\n" \
+                    "• Стажировки за рубежом\n\n" \
+                    "**НАО:**\n" \
+                    "• Программы двойных дипломов с ЕС\n" \
+                    "• Гранты на обучение за границей\n\n" \
+                    "✈️ **Программы обмена:**\n" \
+                    "• Erasmus+ (Европа)\n• Campus France (Франция)\n• DAAD (Германия)\n• Global Korea (Корея)"
+        
+        elif "рейтинг" in question or "топ" in question or "лучший" in question:
+            answer = "🏆 **Топ университетов по рейтингу:**\n\n"
+            for i, uni in enumerate(universities[:5], 1):
+                answer += f"{i}. **{uni['name']}** ({uni['short_name']})\n"
+                answer += f"   ⭐ {uni['rating']}/5 | 📍 {uni['city']}\n"
+                answer += f"   🎯 ЕНТ от {uni.get('ent_min_score', 'N/A')} | 👨‍🎓 {uni.get('students_count', 'N/A')} студентов\n\n"
+            answer += "📊 *Рейтинг основан на качестве образования, исследованиях и трудоустройстве выпускников*"
+        
+        elif "программ" in question or "специальность" in question:
+            answer = "🎓 **Популярные программы обучения:**\n\n" \
+                    "**IT-направления:**\n" \
+                    "• Computer Science\n• Data Science\n• Кибербезопасность\n• Искусственный интеллект\n\n" \
+                    "**Технические:**\n" \
+                    "• Инженерия\n• Нефтегазовое дело\n• Энергетика\n• Телекоммуникации\n\n" \
+                    "**Бизнес:**\n" \
+                    "• Менеджмент\n• Финансы\n• Маркетинг\n• Международные отношения\n\n" \
+                    "💡 *Для конкретных программ уточните университет*"
+        
+        else:
+            answer = f"🤖 Я получил ваш вопрос: '{data.get('question', '')}'\n\n" \
+                    "Я могу помочь с:\n" \
+                    "🎯 **Подбором по баллам ЕНТ**\n" \
+                    "⚖️ **Сравнением университетов**\n" \
+                    "💻 **IT-программами**\n" \
+                    "🌍 **Международными возможностями**\n" \
+                    "🏆 **Рейтингами вузов**\n" \
+                    "🎓 **Программами обучения**\n\n" \
+                    "Попробуйте задать конкретный вопрос! Например:\n" \
+                    "• 'Сравни МУИТ и КБТУ'\n" \
+                    "• 'Куда поступить с 105 баллами?'\n" \
+                    "• 'Какие IT-вузы в Алматы?'"
+        
+        return jsonify({
+            "success": True,
+            "answer": answer,
+            "question": data.get('question', ''),
+            "context": f"Проанализировано {len(universities)} университетов"
+        })
+        
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "answer": "Извините, произошла ошибка при обработке запроса. Попробуйте еще раз."
+        }), 500
 
+# ==================== ЗАПУСК СЕРВЕРА ====================
 if __name__ == '__main__':
-    print("🚀 Server started!")
-    print("🌐 Main page: http://localhost:5000")
-    print("📡 API universities: http://localhost:5000/api/universities")
-    print("📡 API university details: http://localhost:5000/api/university/1")
+    print("\n" + "="*50)
+    print("🚀 DataHub ВУЗов РК - Сервер запущен!")
+    print("="*50)
+    print("🌐 Главная страница: http://localhost:8000")
+    print("📡 API университетов: http://localhost:8000/api/universities")
+    print("🤖 ИИ-ассистент: POST http://localhost:8000/api/ai/ask")
+    print("="*50 + "\n")
     app.run(debug=True, port=5000)

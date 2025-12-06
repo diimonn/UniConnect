@@ -211,22 +211,19 @@
 
     <!-- Навбар -->
     <div class="navbar fade">
-        <div class="navbar-logo">DataHub ВУЗов РК</div>
+        <div class="navbar-logo"></div>
 
         <div class="navbar-menu">
             <a href="#">Главная</a>
             <a href="universities.html">О ВУЗах</a>
-            <a href="#">Программы</a>
-            <a href="#">Поступление</a>
-            <a href="#">3D-тур</a>
-            <a href="#">Международное</a>
+           
             <a href="#">Сравнение</a>
         </div>
     </div>
 
     <!-- HERO -->
     <div class="hero fade delay-1">
-        <div class="hero-title">DataHub ВУЗов РК</div>
+        <div class="hero-title">DataHub</div>
         <div class="hero-subtitle">
             Единая информационная система высших учебных заведений Казахстана. 
             Найдите свой идеальный университет среди лучших ВУЗов страны.
@@ -299,6 +296,535 @@
             <a href="#">Узнать больше →</a>
         </div>
     </div>
+<!-- ==================== -->
+<!-- ИИ-АССИСТЕНТ - ЧАТ ВИДЖЕТ -->
+<!-- ==================== -->
+<div id="ai-chat-widget">
+    <!-- Кнопка для открытия чата -->
+    <button id="chat-toggle" onclick="toggleChat()">
+        <span>🤖</span>
+        <span id="unread-badge" class="hidden">1</span>
+    </button>
 
+    <!-- Окно чата -->
+    <div id="chat-container" class="hidden">
+        <div class="chat-header">
+            <h3>🎓 DataHub Ассистент</h3>
+            <button onclick="toggleChat()" class="close-btn">×</button>
+        </div>
+
+        <div id="chat-messages">
+            <!-- Сообщения будут здесь -->
+            <div class="message ai-message">
+                Привет! Я ваш ИИ-помощник по выбору университета в Казахстане. 
+                Могу помочь сравнить вузы, подобрать программу или ответить на вопросы о поступлении. 
+                Чем могу помочь?
+            </div>
+        </div>
+
+        <div class="chat-input-area">
+            <input type="text" id="chat-input" 
+                   placeholder="Например: 'Сравни МУИТ и КБТУ' или 'IT-программы'"
+                   onkeypress="if(event.key === 'Enter') sendMessage()">
+            <button onclick="sendMessage()">➤</button>
+        </div>
+
+        <!-- Быстрые подсказки -->
+        <div class="chat-quick-tips">
+            <small>💡 Попробуйте спросить:</small>
+            <button onclick="quickQuestion('Сравни МУИТ и КБТУ')">Сравнить вузы</button>
+            <button onclick="quickQuestion('Куда поступить с 105 баллами?')">Поступление</button>
+            <button onclick="quickQuestion('IT-программы в Алматы')">IT-программы</button>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* СТИЛИ ДЛЯ ЧАТ-ВИДЖЕТА */
+    #ai-chat-widget {
+        position: fixed;
+        bottom: 25px;
+        right: 25px;
+        z-index: 1000;
+        font-family: 'Segoe UI', sans-serif;
+    }
+
+    /* Кнопка открытия чата */
+    #chat-toggle {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #3a57df, #2666ff);
+        border: none;
+        color: white;
+        font-size: 28px;
+        cursor: pointer;
+        box-shadow: 0 6px 20px rgba(58, 87, 223, 0.4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        transition: all 0.3s ease;
+    }
+
+    #chat-toggle:hover {
+        transform: scale(1.1);
+        box-shadow: 0 8px 25px rgba(58, 87, 223, 0.6);
+    }
+
+    #unread-badge {
+        position: absolute;
+        top: -5px;
+        right: -5px;
+        background: #ff4757;
+        color: white;
+        border-radius: 50%;
+        width: 22px;
+        height: 22px;
+        font-size: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+    }
+
+    /* Окно чата */
+    #chat-container {
+        width: 380px;
+        height: 500px;
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+        display: flex;
+        flex-direction: column;
+        margin-bottom: 20px;
+        animation: slideInUp 0.3s ease;
+    }
+
+    @keyframes slideInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Заголовок чата */
+    .chat-header {
+        background: linear-gradient(135deg, #3a57df, #2666ff);
+        color: white;
+        padding: 18px 20px;
+        border-radius: 20px 20px 0 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .chat-header h3 {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 600;
+    }
+
+    .close-btn {
+        background: none;
+        border: none;
+        color: white;
+        font-size: 28px;
+        cursor: pointer;
+        line-height: 1;
+        padding: 0;
+        width: 30px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* Область сообщений */
+    #chat-messages {
+        flex: 1;
+        padding: 20px;
+        overflow-y: auto;
+        background: #f8fafc;
+    }
+
+    /* Сообщения */
+    .message {
+        margin-bottom: 15px;
+        max-width: 85%;
+        padding: 12px 16px;
+        border-radius: 18px;
+        line-height: 1.4;
+        word-wrap: break-word;
+        animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .ai-message {
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 18px 18px 18px 4px;
+        margin-right: auto;
+    }
+
+    .user-message {
+        background: linear-gradient(135deg, #3a57df, #2666ff);
+        color: white;
+        border-radius: 18px 18px 4px 18px;
+        margin-left: auto;
+    }
+
+    /* Поле ввода */
+    .chat-input-area {
+        display: flex;
+        padding: 15px;
+        border-top: 1px solid #e2e8f0;
+        background: white;
+    }
+
+    .chat-input-area input {
+        flex: 1;
+        padding: 12px 16px;
+        border: 1px solid #e2e8f0;
+        border-radius: 25px;
+        font-size: 14px;
+        outline: none;
+        transition: border 0.2s;
+    }
+
+    .chat-input-area input:focus {
+        border-color: #3a57df;
+    }
+
+    .chat-input-area button {
+        background: linear-gradient(135deg, #3a57df, #2666ff);
+        color: white;
+        border: none;
+        width: 44px;
+        border-radius: 50%;
+        margin-left: 10px;
+        cursor: pointer;
+        font-size: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+    }
+
+    .chat-input-area button:hover {
+        transform: scale(1.05);
+    }
+
+    /* Быстрые подсказки */
+    .chat-quick-tips {
+        padding: 12px 15px;
+        background: #f1f5f9;
+        border-top: 1px solid #e2e8f0;
+        border-radius: 0 0 20px 20px;
+    }
+
+    .chat-quick-tips small {
+        display: block;
+        color: #64748b;
+        margin-bottom: 8px;
+        font-size: 12px;
+    }
+
+    .chat-quick-tips button {
+        background: white;
+        border: 1px solid #cbd5e1;
+        color: #475569;
+        padding: 6px 12px;
+        border-radius: 15px;
+        font-size: 12px;
+        margin-right: 8px;
+        margin-bottom: 5px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .chat-quick-tips button:hover {
+        background: #f8fafc;
+        border-color: #3a57df;
+        color: #3a57df;
+    }
+
+    /* Утилиты */
+    .hidden {
+        display: none !important;
+    }
+
+    /* Стили для таблиц в сообщениях (для сравнения) */
+    .message table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 10px 0;
+        font-size: 13px;
+        background: white;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    .message th {
+        background: #f1f5f9;
+        padding: 10px;
+        text-align: left;
+        font-weight: 600;
+        color: #475569;
+        border-bottom: 2px solid #e2e8f0;
+    }
+
+    .message td {
+        padding: 10px;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .message tr:last-child td {
+        border-bottom: none;
+    }
+
+    /* Бейдж университетов */
+    .university-badge {
+        display: inline-block;
+        background: #e0f2fe;
+        color: #0369a1;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 12px;
+        margin: 3px;
+        font-weight: 500;
+    }
+</style>
+
+<script>
+    // ====================
+    // ФУНКЦИИ ЧАТА
+    // ====================
+    
+    const API_URL = 'http://localhost:5000/api/ai/ask';
+    let isChatOpen = false;
+    let hasUnread = false;
+
+    // Переключение чата
+    function toggleChat() {
+        const chatContainer = document.getElementById('chat-container');
+        const toggleBtn = document.getElementById('chat-toggle');
+        
+        if (isChatOpen) {
+            chatContainer.classList.add('hidden');
+            toggleBtn.style.transform = 'scale(1)';
+        } else {
+            chatContainer.classList.remove('hidden');
+            toggleBtn.style.transform = 'scale(1.1)';
+            
+            // Скрываем уведомление о новых сообщениях
+            if (hasUnread) {
+                document.getElementById('unread-badge').classList.add('hidden');
+                hasUnread = false;
+            }
+        }
+        
+        isChatOpen = !isChatOpen;
+    }
+
+    // Отправить сообщение
+    async function sendMessage() {
+        const input = document.getElementById('chat-input');
+        const message = input.value.trim();
+        
+        if (!message) return;
+        
+        // Добавляем сообщение пользователя
+        addMessage(message, 'user');
+        input.value = '';
+        
+        // Показываем индикатор "печатает"
+        showTypingIndicator();
+        
+        try {
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ question: message })
+            });
+            
+            const data = await response.json();
+            
+            // Убираем индикатор
+            removeTypingIndicator();
+            
+            if (data.success) {
+                addMessage(data.answer, 'ai');
+            } else {
+                addMessage(`Ошибка: ${data.error || 'Неизвестная ошибка'}`, 'ai');
+            }
+            
+        } catch (error) {
+            removeTypingIndicator();
+            addMessage('⚠️ Не могу подключиться к серверу. Проверьте, запущен ли backend на порту 8000.', 'ai');
+            console.error('Ошибка:', error);
+        }
+    }
+
+    // Быстрый вопрос
+    function quickQuestion(question) {
+        document.getElementById('chat-input').value = question;
+        sendMessage();
+    }
+
+    // Добавить сообщение в чат
+    function addMessage(text, sender) {
+        const messagesDiv = document.getElementById('chat-messages');
+        const messageDiv = document.createElement('div');
+        
+        messageDiv.className = `message ${sender}-message`;
+        
+        // Форматируем текст (Markdown -> HTML)
+        let formattedText = formatMessage(text);
+        
+        messageDiv.innerHTML = formattedText;
+        messagesDiv.appendChild(messageDiv);
+        
+        // Прокручиваем вниз
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        
+        // Показываем уведомление если чат закрыт
+        if (sender === 'ai' && !isChatOpen) {
+            document.getElementById('unread-badge').classList.remove('hidden');
+            hasUnread = true;
+        }
+    }
+
+    // Форматирование сообщения
+    function formatMessage(text) {
+        // Заменяем Markdown на HTML
+        let html = text
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            .replace(/\n/g, '<br>')
+            .replace(/🎓/g, '🎓 ')
+            .replace(/⭐/g, '⭐ ')
+            .replace(/📍/g, '📍 ')
+            .replace(/💻/g, '💻 ')
+            .replace(/🌍/g, '🌍 ')
+            .replace(/⚖️/g, '⚖️ ')
+            .replace(/💡/g, '<br>💡 ')
+            .replace(/🏆/g, '🏆 ');
+        
+        // Обработка таблиц
+        if (text.includes('| Параметр |')) {
+            html = formatTable(text);
+        }
+        
+        // Обработка бейджей университетов
+        html = html.replace(/\[(.*?)\]/g, '<span class="university-badge">$1</span>');
+        
+        return html;
+    }
+
+    // Форматирование таблиц
+    function formatTable(text) {
+        const lines = text.trim().split('\n');
+        let tableHtml = '<div style="overflow-x: auto;"><table>';
+        
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i].trim();
+            
+            if (line.startsWith('|') && line.endsWith('|')) {
+                const cells = line.split('|').map(cell => cell.trim()).filter(cell => cell);
+                
+                if (i === 0) {
+                    // Заголовок
+                    tableHtml += '<thead><tr>';
+                    cells.forEach(cell => {
+                        tableHtml += `<th>${cell}</th>`;
+                    });
+                    tableHtml += '</tr></thead><tbody>';
+                } else if (line.includes('---')) {
+                    // Разделитель - пропускаем
+                    continue;
+                } else {
+                    // Тело таблицы
+                    tableHtml += '<tr>';
+                    cells.forEach(cell => {
+                        tableHtml += `<td>${cell}</td>`;
+                    });
+                    tableHtml += '</tr>';
+                }
+            } else if (tableHtml.includes('<table>')) {
+                // Если таблица началась, но это не строка таблицы, закрываем её
+                tableHtml += '</tbody></table></div><br>' + line;
+                break;
+            }
+        }
+        
+        if (tableHtml.includes('<thead>') && !tableHtml.includes('</tbody>')) {
+            tableHtml += '</tbody></table></div>';
+        }
+        
+        return tableHtml;
+    }
+
+    // Индикатор "печатает"
+    function showTypingIndicator() {
+        const messagesDiv = document.getElementById('chat-messages');
+        const typingDiv = document.createElement('div');
+        typingDiv.id = 'typing-indicator';
+        typingDiv.className = 'message ai-message';
+        typingDiv.innerHTML = '<div class="typing"><span></span><span></span><span></span></div>';
+        messagesDiv.appendChild(typingDiv);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
+    function removeTypingIndicator() {
+        const typing = document.getElementById('typing-indicator');
+        if (typing) typing.remove();
+    }
+
+    // Автоматически открыть чат при первом посещении (опционально)
+    window.addEventListener('load', () => {
+        setTimeout(() => {
+            if (!localStorage.getItem('chatSeen')) {
+                toggleChat();
+                localStorage.setItem('chatSeen', 'true');
+            }
+        }, 3000);
+    });
+
+    // Стили для индикатора печати
+    const style = document.createElement('style');
+    style.textContent = `
+        .typing {
+            display: flex;
+            align-items: center;
+            height: 20px;
+        }
+        .typing span {
+            width: 8px;
+            height: 8px;
+            background: #cbd5e1;
+            border-radius: 50%;
+            margin: 0 2px;
+            animation: typing 1.4s infinite both;
+        }
+        .typing span:nth-child(2) { animation-delay: 0.2s; }
+        .typing span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-6px); }
+        }
+    `;
+    document.head.appendChild(style);
+</script>
 </body>
 </html>
